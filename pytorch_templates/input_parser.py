@@ -1,11 +1,10 @@
 import argparse
 
-import torchvision.models as models
+from models import MODEL_REGISTRY
+
 
 def build_config():
-    model_names = sorted(name for name in models.__dict__
-        if name.islower() and not name.startswith("__")
-        and callable(models.__dict__[name]))
+    model_names = sorted(MODEL_REGISTRY.keys())
 
     parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
     parser.add_argument('--data', metavar='DIR', nargs='?', default='imagenet',
@@ -61,6 +60,27 @@ def build_config():
                             'fastest way to use PyTorch for either single node or '
                             'multi node data parallel training')
     parser.add_argument('--dummy', action='store_true', help="use fake data to benchmark")
+
+    # Model configs
+    # ViT
+    parser.add_argument('--image_size', type=int, default=224,
+                        help="size of input image to vit.")
+    parser.add_argument('--patch_size', type=int, default=16,
+                        help='size of patches. image_size must be divisible by patch size.')
+    parser.add_argument('--num_classes', type=int, default=1000,
+                        help='number of classes in dataset.')
+    parser.add_argument('--dim', type=int, default=1024,
+                        help='last dimension of output tensor after linear transformation.')
+    parser.add_argument('--depth', type=int, default=6,
+                        help='number of transformer blocks.')
+    parser.add_argument('--heads', type=int, default=16,
+                        help='number of heads in multi-head attention layer.')
+    parser.add_argument('--mlp_dim', type=int, default=2048,
+                        help='dimension of mlp (feedforward) layer.')
+    parser.add_argument('--dropout', type=float, default=0.1,
+                        help='dropout rate between [0, 1]')
+    parser.add_argument('--emb_dropout', type=float, default=0.1,
+                        help='dropout rate between [0, 1]')
 
     args = parser.parse_args()
     return args

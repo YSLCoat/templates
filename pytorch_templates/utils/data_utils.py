@@ -1,24 +1,55 @@
+import os
+
 import torch
-from torch.utils.data import Dataset, DataLoader
-from torch.utils.data.distributed import DistributedSampler
+import torch.utils.data
+import torch.utils.data.distributed
+import torchvision.datasets as datasets
+import torchvision.transforms as transforms
 
-class MyTrainDataset(Dataset):
-    def __init__(self, size):
-        self.size = size
-        self.data = [(torch.rand(20), torch.rand(1)) for _ in range(size)]
+def build_data_loader(args):
+    if args.dummy:
+        print("=> Dummy data is used!")
+        train_dataset = datasets.FakeData(1281167, (3, 224, 224), 1000, transforms.ToTensor())
+        val_dataset = datasets.FakeData(50000, (3, 224, 224), 1000, transforms.ToTensor())
+    else:
+        traindir = os.path.join(args.data, 'train')
+        valdir = os.path.join(args.data, 'val')
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
 
-    def __len__(self):
-        return self.size
+        train_dataset = datasets.ImageFolder(
+            traindir,
+            transforms.Compose([
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ]))
+
+        val_dataset = datasets.ImageFolder(
+            valdir,
+            transforms.Compose([
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize,
+            ]))
+
+    if args.distributed:
+        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+        val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset, shuffle=False, drop_last=True)
+    else:
+        train_sampler = None
+        val_sampler = None
+
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
+        num_workers=args.workers, pin_memory=True, sampler=train_sampler)
+
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=args.batch_size, shuffle=False,
+        num_workers=args.workers, pin_memory=True, sampler=val_sampler)
     
-    def __getitem__(self, index):
-        return self.data[index]
-    
 
-def prepare_dataloader(dataset: Dataset, batch_size: int):
-    return DataLoader(
-        dataset,
-        batch_size=batch_size,
-        pin_memory=True,
-        shuffle=False,
-        sampler=DistributedSampler(dataset)
-    )
+def read_imagenet_labels():
+    pass

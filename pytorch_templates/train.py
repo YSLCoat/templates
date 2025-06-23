@@ -14,7 +14,6 @@ import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.datasets as datasets
-import torchvision.models as models
 import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import Subset
@@ -25,8 +24,12 @@ from utils.training_utils import (
     ProgressMeter,
     Summary
 )
-from utils.input_parser import build_config
+from input_parser import build_config
 from metrics import accuracy
+from models import (
+    MODEL_REGISTRY,
+    create_model
+)
 
 
 best_acc1 = 0
@@ -103,13 +106,9 @@ def main_worker(gpu, ngpus_per_node, args):
             args.rank = args.rank * ngpus_per_node + gpu
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
-    # create model
-    if args.pretrained:
-        print("=> using pre-trained model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](pretrained=True)
-    else:
-        print("=> creating model '{}'".format(args.arch))
-        model = models.__dict__[args.arch]()
+    
+    print("=> creating model '{}'".format(args.arch))
+    model = create_model(args)
 
     if not use_accel:
         print('using CPU, this will be slow')
