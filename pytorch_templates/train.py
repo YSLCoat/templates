@@ -30,6 +30,7 @@ from models import (
     MODEL_REGISTRY,
     create_model
 )
+from utils.data_utils import ImageNetDataset
 
 
 best_acc1 = 0
@@ -182,13 +183,11 @@ def main_worker(gpu, ngpus_per_node, args):
         train_dataset = datasets.FakeData(1281167, (3, 224, 224), 1000, transforms.ToTensor())
         val_dataset = datasets.FakeData(50000, (3, 224, 224), 1000, transforms.ToTensor())
     else:
-        traindir = os.path.join(args.data, 'train')
-        valdir = os.path.join(args.data, 'val')
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
-        train_dataset = datasets.ImageFolder(
-            traindir,
+        train_dataset = ImageNetDataset(
+            args.data, 'train',
             transforms.Compose([
                 transforms.RandomResizedCrop(224),
                 transforms.RandomHorizontalFlip(),
@@ -196,10 +195,10 @@ def main_worker(gpu, ngpus_per_node, args):
                 normalize,
             ]))
 
-        val_dataset = datasets.ImageFolder(
-            valdir,
+        val_dataset = ImageNetDataset(
+            args.data, 'val',
             transforms.Compose([
-                transforms.Resize(256),
+                transforms.Resize(224),
                 transforms.CenterCrop(224),
                 transforms.ToTensor(),
                 normalize,
